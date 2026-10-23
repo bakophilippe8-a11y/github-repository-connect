@@ -9,4 +9,4 @@
 - [x] Demander la publication de ce projet et remplacer l'adresse Android par celle de ce projet.
 - [x] Vérifier les modèles Google ; conserver le modèle texte et utiliser le repli vidéo demandé, en documentant l'arrêt des previews.
 - [x] Vérifier le secret de chiffrement : absent des secrets de ce projet ; aucun secret créé ni changé.
-- [ ] Vérifier les tests et les contrôles automatiques après les dernières modifications.
+- [x] Vérifier les dernières modifications : 48 tests passent et journal automatique « build OK » ; aucun résultat de typecheck séparé disponible.

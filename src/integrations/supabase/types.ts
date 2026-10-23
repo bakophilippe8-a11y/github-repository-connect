@@ -261,6 +261,9 @@ export type Database = {
       sales_guidelines: {
         Row: {
           ai_paused: boolean
+          daily_ads_limit: number
+          daily_ai_limit: number
+          daily_video_limit: number
           human_conditions: string
           pause_reason: string
           sales_info: string
@@ -270,6 +273,9 @@ export type Database = {
         }
         Insert: {
           ai_paused?: boolean
+          daily_ads_limit?: number
+          daily_ai_limit?: number
+          daily_video_limit?: number
           human_conditions?: string
           pause_reason?: string
           sales_info?: string
@@ -279,6 +285,9 @@ export type Database = {
         }
         Update: {
           ai_paused?: boolean
+          daily_ads_limit?: number
+          daily_ai_limit?: number
+          daily_video_limit?: number
           human_conditions?: string
           pause_reason?: string
           sales_info?: string

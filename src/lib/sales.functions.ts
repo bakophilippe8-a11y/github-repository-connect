@@ -4,7 +4,7 @@ import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware';
 import { GRAPH_URL } from './meta';
 import { EDITABLE_CAMPAIGN_STATUSES } from './sales-rules';
 
-const channel = z.enum(['telegram', 'whatsapp', 'meta']);
+const channel = z.enum(['telegram', 'whatsapp', 'meta', 'ai']);
 export const getSalesSettings = createServerFn({ method: 'GET' }).middleware([requireSupabaseAuth]).handler(async ({ context }) => {
   const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
   const { data, error } = await supabaseAdmin.from('seller_connections').select('id,channel,tested_at,test_error,enabled').eq('user_id', context.userId);
@@ -16,6 +16,14 @@ export const getSalesSettings = createServerFn({ method: 'GET' }).middleware([re
 export const saveSalesConnection = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({ channel, token: z.string().trim().min(10).max(4096), identifier: z.string().trim().max(100).default(''), appSecret: z.string().trim().max(256).default(''), verifyToken: z.string().trim().max(256).default(''), pageId: z.string().trim().max(40).default('') }).parse(input))
   .handler(async ({ data, context }) => {
+    if (data.channel === 'ai') {
+      // Clé API Google (Gemini) : aucun identifiant requis, juste la clé.
+      const { encryptCredentials } = await import('./sales-crypto.server');
+      const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
+      const result = await supabaseAdmin.from('seller_connections').upsert({ user_id: context.userId, channel: 'ai', credentials_ciphertext: encryptCredentials({ token: data.token }, context.userId), tested_at: null, test_error: null, enabled: false }, { onConflict: 'user_id,channel' });
+      if (result.error) throw result.error;
+      return { ok: true };
+    }
     if (data.channel === 'telegram' && !/^\d{6,12}:[A-Za-z0-9_-]{30,}$/.test(data.token)) throw new Error('Format de jeton Telegram invalide (attendu : 123456789:AA…).');
     if (data.channel === 'meta' && data.pageId && !/^\d+$/.test(data.pageId)) throw new Error('L’identifiant de la Page Facebook doit être numérique.');
     const pageOnly = data.channel === 'meta' && !data.identifier && !!data.pageId;
@@ -41,6 +49,15 @@ export const testSalesConnection = createServerFn({ method: 'POST' }).middleware
     if (saved.error) throw new Error('Enregistrez vos accès avant de les tester.');
     const { decryptCredentials } = await import('./sales-crypto.server');
     const credentials = decryptCredentials(saved.data.credentials_ciphertext, context.userId);
+    if (data.channel === 'ai') {
+      // Appel minimal côté serveur : liste des modèles. La clé n'est jamais renvoyée ni journalisée.
+      const check = await fetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=1', { headers: { 'x-goog-api-key': credentials['token'] ?? '' } });
+      const ok = check.ok;
+      const message = ok ? null : check.status === 401 || check.status === 403 ? 'Google refuse cette clé. Vérifiez-la dans Google AI Studio.' : check.status === 429 ? 'Quota Google dépassé pour cette clé. Vérifiez votre compte Google AI Studio.' : 'Impossible de joindre Google. Réessayez dans un instant.';
+      const updated = await supabaseAdmin.from('seller_connections').update({ tested_at: ok ? new Date().toISOString() : null, test_error: message, enabled: false }).eq('id', saved.data.id).eq('user_id', context.userId);
+      if (updated.error) throw updated.error;
+      return { ok, message };
+    }
     const response = data.channel === 'telegram'
       ? await fetch(`https://api.telegram.org/bot${credentials['token']}/getMe`, { method: 'POST' })
       : await fetch(`${GRAPH_URL}/${data.channel === 'meta' ? (credentials['identifier'] ? 'act_' + credentials['identifier'] : credentials['pageId']) : credentials['identifier']}?fields=id`, { headers: { Authorization: `Bearer ${credentials['token']}` } });

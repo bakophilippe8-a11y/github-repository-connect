@@ -1,6 +1,6 @@
 # Application Android (APK)
 
-L'APK est une enveloppe Capacitor qui ouvre l'application publiée (`APP_URL`, par défaut l'URL Lovable du README). Mettre à jour l'application web met à jour l'APK sans le recompiler.
+L'APK est une enveloppe Capacitor qui ouvre l'application publiée (`APP_URL`, par défaut `https://github-harbor-connector.lovable.app`). Mettre à jour l'application web met à jour l'APK sans le recompiler.
 
 ## Obtenir l'APK (sans rien installer sur votre ordinateur)
 1. Envoyez le projet sur GitHub (Lovable → Connecteurs → GitHub, ou dépôt GitHub existant).
@@ -22,6 +22,8 @@ Nom : `capacitor.config.ts` (`appName`) · Identifiant : `appId` + `applicationI
 
 ## Clé IA de chaque vendeur
 L'application n'utilise aucun crédit Lovable : chaque vendeur colle sa propre clé API Google (Gemini) dans **Paramètres API → Clé IA**. La clé est chiffrée côté serveur et les appels IA (réponses, brouillons, vidéos Veo) sont facturés par Google directement sur le compte du vendeur. Sans clé enregistrée, les fonctions IA affichent un message renvoyant vers cet écran.
+
+Attention : la documentation Google consultée le 23 octobre 2026 annonce l'arrêt de `veo-3.1-generate-preview` et `veo-3.1-fast-generate-preview` depuis le 22 octobre. La valeur de repli `VIDEO_MODEL=veo-3.1-generate-preview` ne garantit donc plus une génération fonctionnelle. Google recommande Gemini Omni Flash ou les modèles GA de Gemini Enterprise Agent Platform ; leur intégration nécessite de vérifier le contrat API, pas simplement de changer le nom du modèle. Aucun remplacement du modèle texte n'a été effectué. Source : https://ai.google.dev/gemini-api/docs/veo.
 
 ## Mettre à jour l'APK
 1. Modifiez l'application dans Lovable et publiez-la : l'APK existant charge automatiquement la nouvelle version (il ouvre `APP_URL`).

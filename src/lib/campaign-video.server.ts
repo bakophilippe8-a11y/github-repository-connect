@@ -6,7 +6,9 @@ import { VIDEO_SECONDS } from './video-prompt';
  * Flux asynchrone de l'API Gemini : lancement (predictLongRunning) puis interrogation de l'opération.
  */
 const API = 'https://generativelanguage.googleapis.com/v1beta';
-const model = () => process.env['VIDEO_MODEL'] || 'veo-3.1-fast-generate-preview';
+// Repli demandé ; Google annonce l'arrêt de ces previews le 22 octobre 2026.
+// Un modèle de remplacement nécessite de vérifier également son contrat API.
+const model = () => process.env['VIDEO_MODEL'] || 'veo-3.1-generate-preview';
 
 type GoogleError = { error?: { code?: number; message?: string; status?: string } };
 

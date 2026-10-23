@@ -61,8 +61,18 @@ export async function pollCampaignVideo(jobId: string, apiKey: string): Promise<
   return { status: 'completed', url: uri };
 }
 
+/** N'accepte que des URL https sur googleapis.com (ou un sous-domaine) avant d'y envoyer la clé. */
+export function isTrustedGoogleVideoUrl(url: string) {
+  try {
+    const { protocol, hostname } = new URL(url);
+    const host = hostname.toLowerCase();
+    return protocol === 'https:' && (host === 'googleapis.com' || host.endsWith('.googleapis.com'));
+  } catch { return false; }
+}
+
 /** Télécharge la vidéo générée (l'URL Google exige la clé API du vendeur). */
 export async function downloadCampaignVideo(url: string, apiKey: string) {
+  if (!isTrustedGoogleVideoUrl(url)) throw new Error('Adresse de la vidéo refusée : domaine non Google, la clé IA n’est pas envoyée.');
   const file = await fetch(url, { headers: { 'x-goog-api-key': apiKey }, signal: AbortSignal.timeout(60000) });
   if (!file.ok) await googleError(file);
   return file;

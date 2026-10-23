@@ -10,33 +10,148 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as CatalogueRouteImport } from './routes/catalogue'
+import { Route as LeadsRouteImport } from './routes/leads'
+import { Route as StatistiquesRouteImport } from './routes/statistiques'
+import { Route as AuthenticatedConversationsRouteImport } from './routes/_authenticated/conversations'
+import { Route as AuthenticatedParametresRouteImport } from './routes/_authenticated/parametres'
+import { Route as AuthenticatedPubliciteFacebookRouteImport } from './routes/_authenticated/publicite-facebook'
+import { Route as ApiSalesDecisionRouteImport } from './routes/api/sales/decision'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CatalogueRoute = CatalogueRouteImport.update({
+  id: '/catalogue',
+  path: '/catalogue',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LeadsRoute = LeadsRouteImport.update({
+  id: '/leads',
+  path: '/leads',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StatistiquesRoute = StatistiquesRouteImport.update({
+  id: '/statistiques',
+  path: '/statistiques',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedConversationsRoute =
+  AuthenticatedConversationsRouteImport.update({
+    id: '/conversations',
+    path: '/conversations',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedParametresRoute = AuthenticatedParametresRouteImport.update({
+  id: '/parametres',
+  path: '/parametres',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedPubliciteFacebookRoute =
+  AuthenticatedPubliciteFacebookRouteImport.update({
+    id: '/publicite-facebook',
+    path: '/publicite-facebook',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const ApiSalesDecisionRoute = ApiSalesDecisionRouteImport.update({
+  id: '/api/sales/decision',
+  path: '/api/sales/decision',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/catalogue': typeof CatalogueRoute
+  '/leads': typeof LeadsRoute
+  '/statistiques': typeof StatistiquesRoute
+  '/conversations': typeof AuthenticatedConversationsRoute
+  '/parametres': typeof AuthenticatedParametresRoute
+  '/publicite-facebook': typeof AuthenticatedPubliciteFacebookRoute
+  '/api/sales/decision': typeof ApiSalesDecisionRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/catalogue': typeof CatalogueRoute
+  '/leads': typeof LeadsRoute
+  '/statistiques': typeof StatistiquesRoute
+  '/conversations': typeof AuthenticatedConversationsRoute
+  '/parametres': typeof AuthenticatedParametresRoute
+  '/publicite-facebook': typeof AuthenticatedPubliciteFacebookRoute
+  '/api/sales/decision': typeof ApiSalesDecisionRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/auth': typeof AuthRoute
+  '/catalogue': typeof CatalogueRoute
+  '/leads': typeof LeadsRoute
+  '/statistiques': typeof StatistiquesRoute
+  '/_authenticated/conversations': typeof AuthenticatedConversationsRoute
+  '/_authenticated/parametres': typeof AuthenticatedParametresRoute
+  '/_authenticated/publicite-facebook': typeof AuthenticatedPubliciteFacebookRoute
+  '/api/sales/decision': typeof ApiSalesDecisionRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/catalogue'
+    | '/leads'
+    | '/statistiques'
+    | '/conversations'
+    | '/parametres'
+    | '/publicite-facebook'
+    | '/api/sales/decision'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/auth'
+    | '/catalogue'
+    | '/leads'
+    | '/statistiques'
+    | '/conversations'
+    | '/parametres'
+    | '/publicite-facebook'
+    | '/api/sales/decision'
+  id:
+    | '__root__'
+    | '/'
+    | '/_authenticated'
+    | '/auth'
+    | '/catalogue'
+    | '/leads'
+    | '/statistiques'
+    | '/_authenticated/conversations'
+    | '/_authenticated/parametres'
+    | '/_authenticated/publicite-facebook'
+    | '/api/sales/decision'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  AuthRoute: typeof AuthRoute
+  CatalogueRoute: typeof CatalogueRoute
+  LeadsRoute: typeof LeadsRoute
+  StatistiquesRoute: typeof StatistiquesRoute
+  ApiSalesDecisionRoute: typeof ApiSalesDecisionRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +163,95 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/catalogue': {
+      id: '/catalogue'
+      path: '/catalogue'
+      fullPath: '/catalogue'
+      preLoaderRoute: typeof CatalogueRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/leads': {
+      id: '/leads'
+      path: '/leads'
+      fullPath: '/leads'
+      preLoaderRoute: typeof LeadsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/statistiques': {
+      id: '/statistiques'
+      path: '/statistiques'
+      fullPath: '/statistiques'
+      preLoaderRoute: typeof StatistiquesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/conversations': {
+      id: '/_authenticated/conversations'
+      path: '/conversations'
+      fullPath: '/conversations'
+      preLoaderRoute: typeof AuthenticatedConversationsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/parametres': {
+      id: '/_authenticated/parametres'
+      path: '/parametres'
+      fullPath: '/parametres'
+      preLoaderRoute: typeof AuthenticatedParametresRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/publicite-facebook': {
+      id: '/_authenticated/publicite-facebook'
+      path: '/publicite-facebook'
+      fullPath: '/publicite-facebook'
+      preLoaderRoute: typeof AuthenticatedPubliciteFacebookRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/api/sales/decision': {
+      id: '/api/sales/decision'
+      path: '/api/sales/decision'
+      fullPath: '/api/sales/decision'
+      preLoaderRoute: typeof ApiSalesDecisionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
+interface AuthenticatedRouteRouteChildren {
+  AuthenticatedConversationsRoute: typeof AuthenticatedConversationsRoute
+  AuthenticatedParametresRoute: typeof AuthenticatedParametresRoute
+  AuthenticatedPubliciteFacebookRoute: typeof AuthenticatedPubliciteFacebookRoute
+}
+
+const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedConversationsRoute: AuthenticatedConversationsRoute,
+  AuthenticatedParametresRoute: AuthenticatedParametresRoute,
+  AuthenticatedPubliciteFacebookRoute: AuthenticatedPubliciteFacebookRoute,
+}
+
+const AuthenticatedRouteRouteWithChildren =
+  AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  AuthRoute: AuthRoute,
+  CatalogueRoute: CatalogueRoute,
+  LeadsRoute: LeadsRoute,
+  StatistiquesRoute: StatistiquesRoute,
+  ApiSalesDecisionRoute: ApiSalesDecisionRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -52,7 +52,7 @@ export async function pollCampaignVideo(jobId: string, apiKey: string): Promise<
       raiMediaFilteredCount?: number;
     };
   };
-  if (operation.error) return { status: 'failed', error: operation.error.message };
+  if (operation.error) return { status: 'failed', error: operation.error.message ?? 'Échec inconnu.' };
   if (!operation.done) return { status: 'generating' };
   const uri = operation.response?.generateVideoResponse?.generatedSamples?.[0]?.video?.uri
     ?? operation.response?.videos?.[0]?.uri

@@ -197,7 +197,7 @@ export const checkCampaignVideo = createServerFn({ method: 'POST' }).middleware(
         await failVideo(supabaseAdmin, context.userId, data.id, 'La vidéo n’a pas pu être générée (contenu refusé ou incident du service). Modifiez le prompt puis réessayez.');
         return { status: 'failed', error: 'Échec de génération.' };
       }
-      if (job.status !== 'completed' || !job.url) return { status: 'generating', error: null, progress: job.progress ?? null };
+      if (job.status !== 'completed' || !job.url) return { status: 'generating', error: null, progress: job.status === 'generating' ? (job.progress ?? null) : null };
       // Copie durable : le lien du fournisseur est temporaire et exige la clé du vendeur.
       const file = await downloadCampaignVideo(job.url, apiKey);
       const size = Number(file.headers.get('content-length') ?? 0);

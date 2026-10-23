@@ -19,3 +19,13 @@ GitHub → Settings → Secrets and variables → Actions : créez `KEYSTORE_BAS
 
 ## Personnalisation
 Nom : `capacitor.config.ts` (`appName`) · Identifiant : `appId` + `applicationId` dans `android/app/build.gradle` · Icône : remplacez `assets/icon-only.png` (1024×1024 conseillé).
+
+## Clé IA de chaque vendeur
+L'application n'utilise aucun crédit Lovable : chaque vendeur colle sa propre clé API Google (Gemini) dans **Paramètres API → Clé IA**. La clé est chiffrée côté serveur et les appels IA (réponses, brouillons, vidéos Veo) sont facturés par Google directement sur le compte du vendeur. Sans clé enregistrée, les fonctions IA affichent un message renvoyant vers cet écran.
+
+## Mettre à jour l'APK
+1. Modifiez l'application dans Lovable et publiez-la : l'APK existant charge automatiquement la nouvelle version (il ouvre `APP_URL`).
+2. Recompilez uniquement si vous changez le nom, l'icône, l'identifiant ou `APP_URL` : poussez sur GitHub puis relancez le workflow **Build APK** (ou créez un tag `v*`). L'APK doit être signé avec LE MÊME keystore que la première version, sinon Android refuse la mise à jour.
+
+## Dans la WebView Android
+La session de connexion persiste après fermeture de l'app (stockage local de la WebView conservé). Les liens externes (Facebook, Google AI Studio) s'ouvrent avec `target="_blank"` dans le navigateur du téléphone. L'interface est utilisable sur petit écran et la vidéo se lit en plein écran (`playsInline`).

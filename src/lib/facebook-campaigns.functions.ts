@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware';
 import { campaignDraft, campaignReview } from './facebook-campaign-rules';
 import { classifyAiFailure, SafeError, shouldPauseAi } from './ai/errors.server';
-import { campaignQuotaExceeded } from './ai/quota.server';
+import { campaignQuotaExceeded, videoQuotaExceeded } from './ai/quota.server';
 import { canPublishCampaign, EDITABLE_CAMPAIGN_STATUSES } from './sales-rules';
 import { VIDEO_PROMPT_MAX } from './video-prompt';
 
@@ -30,10 +30,10 @@ export const generateFacebookCampaign = createServerFn({ method: 'POST' }).middl
     const products = await query;
     if (products.error || (data.productId && !products.data?.length)) throw new Error('Produit indisponible.');
     const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
-    if (await campaignQuotaExceeded(supabaseAdmin, context.userId)) throw new Error('Plafond quotidien de brouillons IA atteint. Réessayez demain.');
+    if (await campaignQuotaExceeded(supabaseAdmin, context.userId, guidelines.data?.daily_ads_limit)) throw new Error('Plafond quotidien de brouillons IA atteint. Réessayez demain.');
     try {
       const { generateFacebookDraft } = await import('./facebook-campaign-ai.server');
-      const draft = await generateFacebookDraft(data.idea, data.language, products.data, guidelines.data, getRequest().signal);
+      const draft = await generateFacebookDraft(context.userId, data.idea, data.language, products.data, guidelines.data, getRequest().signal);
       const saved = await supabaseAdmin.from('sales_campaigns').insert({ user_id: context.userId, ...campaignDraft(draft.title, draft.facebook_copy, draft.voiceover_script) }).select('id').single();
       if (saved.error) throw new SafeError('Impossible d’enregistrer la publicité.');
       return saved.data;
@@ -65,10 +65,10 @@ export const generateConversationScript = createServerFn({ method: 'POST' }).mid
       : await context.supabase.from('products').select('nom,prix,devise,argument_cle').eq('user_id', context.userId).eq('statut', 'actif');
     if (products.error) throw new Error('Impossible de charger vos produits.');
     const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
-    if (await campaignQuotaExceeded(supabaseAdmin, context.userId)) throw new Error('Plafond quotidien de brouillons IA atteint. Réessayez demain.');
+    if (await campaignQuotaExceeded(supabaseAdmin, context.userId, guidelines.data?.daily_ads_limit)) throw new Error('Plafond quotidien de brouillons IA atteint. Réessayez demain.');
     try {
       const { buildScriptContext } = await import('./script-context');
-      const { generateClaudeVideoScript } = await import('./ai/claude-script.server');
+      const { generateConversationVideoScript } = await import('./ai/claude-script.server');
       const scriptContext = buildScriptContext({
         contactStatus: conversation.data.contact_status,
         channel: conversation.data.channel,
@@ -76,7 +76,7 @@ export const generateConversationScript = createServerFn({ method: 'POST' }).mid
         products: products.data ?? [],
         guidelines: guidelines.data ? { tone: guidelines.data.tone, sales_info: guidelines.data.sales_info } : null,
       });
-      const draft = await generateClaudeVideoScript(scriptContext, data.language, getRequest().signal);
+      const draft = await generateConversationVideoScript(context.userId, scriptContext, data.language, getRequest().signal);
       const saved = await supabaseAdmin.from('sales_campaigns').insert({ user_id: context.userId, ...campaignDraft(draft.title, draft.facebook_copy, draft.voiceover_script) }).select('id').single();
       if (saved.error) throw new SafeError('Impossible d’enregistrer le brouillon.');
       return saved.data;
@@ -155,19 +155,17 @@ export const startCampaignVideo = createServerFn({ method: 'POST' }).middleware(
   .inputValidator((input) => z.object({ id: z.string().uuid(), prompt: z.string().trim().min(10).max(VIDEO_PROMPT_MAX) }).parse(input))
   .handler(async ({ data, context }) => {
     const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
-    const guidelines = await supabaseAdmin.from('sales_guidelines').select('ai_paused,pause_reason').eq('user_id', context.userId).maybeSingle();
+    const guidelines = await supabaseAdmin.from('sales_guidelines').select('ai_paused,pause_reason,daily_video_limit').eq('user_id', context.userId).maybeSingle();
     if (guidelines.error) throw new Error('Impossible de lire vos consignes.');
     if (guidelines.data?.ai_paused) throw new Error(guidelines.data.pause_reason || 'La génération IA est suspendue.');
-    const since = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
-    const used = await supabaseAdmin.from('sales_campaigns').select('id', { count: 'exact', head: true }).eq('user_id', context.userId).gte('video_started_at', since);
-    if (used.error) throw new Error('Impossible de vérifier votre quota vidéo.');
-    if ((used.count ?? 0) >= (Number(process.env['VIDEO_DAILY_LIMIT']) || 5)) throw new Error('Plafond quotidien de vidéos atteint. Réessayez demain.');
+    if (await videoQuotaExceeded(supabaseAdmin, context.userId, guidelines.data?.daily_video_limit)) throw new Error('Plafond quotidien de vidéos atteint. Réessayez demain.');
     // Réservation atomique ; relancer une vidéo révoque la validation (la vidéo fait partie du contenu validé).
     const claim = await supabaseAdmin.from('sales_campaigns').update({ video_status: 'generating', video_error: null, video_job_id: null, video_started_at: new Date().toISOString(), status: 'draft', approved_at: null, publish_error: null }).eq('id', data.id).eq('user_id', context.userId).in('status', [...EDITABLE_CAMPAIGN_STATUSES]).neq('video_status', 'generating').select('id').maybeSingle();
     if (claim.error || !claim.data) throw new Error('Cette publicité ne peut pas recevoir de vidéo (déjà publiée, ou génération déjà en cours).');
     try {
+      const { getSellerGeminiKey } = await import('./ai/gemini.server');
       const { submitCampaignVideo } = await import('./campaign-video.server');
-      const job = await submitCampaignVideo(data.prompt);
+      const job = await submitCampaignVideo(data.prompt, await getSellerGeminiKey(context.userId));
       await supabaseAdmin.from('sales_campaigns').update({ video_job_id: job.jobId, video_model: job.model }).eq('id', data.id).eq('user_id', context.userId);
       return { ok: true };
     } catch (error) {
@@ -190,16 +188,18 @@ export const checkCampaignVideo = createServerFn({ method: 'POST' }).middleware(
     if (Date.now() - started > VIDEO_TIMEOUT_MS) { await failVideo(supabaseAdmin, context.userId, data.id, 'La génération a dépassé 15 minutes. Aucun crédit n’est facturé tant que la vidéo n’est pas terminée : relancez-la.'); return { status: 'failed', error: 'Délai dépassé.' }; }
     if (!row.data.video_job_id) return { status: 'generating', error: null };
     try {
-      const { pollCampaignVideo } = await import('./campaign-video.server');
-      const job = await pollCampaignVideo(row.data.video_job_id);
+      const { getSellerGeminiKey } = await import('./ai/gemini.server');
+      const apiKey = await getSellerGeminiKey(context.userId);
+      const { pollCampaignVideo, downloadCampaignVideo } = await import('./campaign-video.server');
+      const job = await pollCampaignVideo(row.data.video_job_id, apiKey);
       if (job.status === 'failed') {
         console.error('[video] job échoué', data.id, job.error);
         await failVideo(supabaseAdmin, context.userId, data.id, 'La vidéo n’a pas pu être générée (contenu refusé ou incident du service). Modifiez le prompt puis réessayez.');
         return { status: 'failed', error: 'Échec de génération.' };
       }
-      if (job.status !== 'completed' || !job.url) return { status: 'generating', error: null, progress: job.progress ?? null };
-      // Copie durable : le lien du fournisseur est temporaire.
-      const file = await fetch(job.url, { signal: AbortSignal.timeout(60000) });
+      if (job.status !== 'completed' || !job.url) return { status: 'generating', error: null, progress: job.status === 'generating' ? (job.progress ?? null) : null };
+      // Copie durable : le lien du fournisseur est temporaire et exige la clé du vendeur.
+      const file = await downloadCampaignVideo(job.url, apiKey);
       const size = Number(file.headers.get('content-length') ?? 0);
       if (!file.ok || size > 100 * 1024 * 1024) throw new SafeError('Impossible de récupérer la vidéo générée.');
       const bytes = await file.arrayBuffer();

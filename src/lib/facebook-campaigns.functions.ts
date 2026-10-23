@@ -188,16 +188,18 @@ export const checkCampaignVideo = createServerFn({ method: 'POST' }).middleware(
     if (Date.now() - started > VIDEO_TIMEOUT_MS) { await failVideo(supabaseAdmin, context.userId, data.id, 'La génération a dépassé 15 minutes. Aucun crédit n’est facturé tant que la vidéo n’est pas terminée : relancez-la.'); return { status: 'failed', error: 'Délai dépassé.' }; }
     if (!row.data.video_job_id) return { status: 'generating', error: null };
     try {
-      const { pollCampaignVideo } = await import('./campaign-video.server');
-      const job = await pollCampaignVideo(row.data.video_job_id);
+      const { getSellerGeminiKey } = await import('./ai/gemini.server');
+      const apiKey = await getSellerGeminiKey(context.userId);
+      const { pollCampaignVideo, downloadCampaignVideo } = await import('./campaign-video.server');
+      const job = await pollCampaignVideo(row.data.video_job_id, apiKey);
       if (job.status === 'failed') {
         console.error('[video] job échoué', data.id, job.error);
         await failVideo(supabaseAdmin, context.userId, data.id, 'La vidéo n’a pas pu être générée (contenu refusé ou incident du service). Modifiez le prompt puis réessayez.');
         return { status: 'failed', error: 'Échec de génération.' };
       }
       if (job.status !== 'completed' || !job.url) return { status: 'generating', error: null, progress: job.progress ?? null };
-      // Copie durable : le lien du fournisseur est temporaire.
-      const file = await fetch(job.url, { signal: AbortSignal.timeout(60000) });
+      // Copie durable : le lien du fournisseur est temporaire et exige la clé du vendeur.
+      const file = await downloadCampaignVideo(job.url, apiKey);
       const size = Number(file.headers.get('content-length') ?? 0);
       if (!file.ok || size > 100 * 1024 * 1024) throw new SafeError('Impossible de récupérer la vidéo générée.');
       const bytes = await file.arrayBuffer();

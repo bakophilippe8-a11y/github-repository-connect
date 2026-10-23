@@ -22,6 +22,8 @@ export const saveSalesConnection = createServerFn({ method: 'POST' }).middleware
       const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
       const result = await supabaseAdmin.from('seller_connections').upsert({ user_id: context.userId, channel: 'ai', credentials_ciphertext: encryptCredentials({ token: data.token }, context.userId), tested_at: null, test_error: null, enabled: false }, { onConflict: 'user_id,channel' });
       if (result.error) throw result.error;
+      const { resumeAi } = await import('./ai/pause');
+      await resumeAi(supabaseAdmin, context.userId);
       return { ok: true };
     }
     if (data.channel === 'telegram' && !/^\d{6,12}:[A-Za-z0-9_-]{30,}$/.test(data.token)) throw new Error('Format de jeton Telegram invalide (attendu : 123456789:AA…).');
@@ -56,6 +58,7 @@ export const testSalesConnection = createServerFn({ method: 'POST' }).middleware
       const message = ok ? null : check.status === 401 || check.status === 403 ? 'Google refuse cette clé. Vérifiez-la dans Google AI Studio.' : check.status === 429 ? 'Quota Google dépassé pour cette clé. Vérifiez votre compte Google AI Studio.' : 'Impossible de joindre Google. Réessayez dans un instant.';
       const updated = await supabaseAdmin.from('seller_connections').update({ tested_at: ok ? new Date().toISOString() : null, test_error: message, enabled: false }).eq('id', saved.data.id).eq('user_id', context.userId);
       if (updated.error) throw updated.error;
+      if (ok) { const { resumeAi } = await import('./ai/pause'); await resumeAi(supabaseAdmin, context.userId); }
       return { ok, message };
     }
     const response = data.channel === 'telegram'

@@ -74,7 +74,7 @@ export const testSalesConnection = createServerFn({ method: 'POST' }).middleware
     return { ok, message };
   });
 export const saveSalesGuidelines = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth])
-  .inputValidator((input) => z.object({ tone: z.string().max(2000), sales_info: z.string().max(10000), human_conditions: z.string().max(4000) }).parse(input))
+  .inputValidator((input) => z.object({ tone: z.string().max(2000), sales_info: z.string().max(10000), human_conditions: z.string().max(4000), daily_ai_limit: z.number().int().min(1).max(100000).default(300), daily_ads_limit: z.number().int().min(1).max(10000).default(30), daily_video_limit: z.number().int().min(1).max(1000).default(5) }).parse(input))
   .handler(async ({ data, context }) => {
     const result = await context.supabase.from('sales_guidelines').upsert({ ...data, user_id: context.userId, updated_at: new Date().toISOString() });
     if (result.error) throw result.error;

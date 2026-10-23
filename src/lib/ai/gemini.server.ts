@@ -27,4 +27,4 @@ export function sellerGoogle(apiKey: string) {
 }
 
 /** Modèle texte Gemini rapide par défaut, configurable par variable d'environnement. */
-export const textModel = (envName: string) => process.env[envName] || 'gemini-3-flash-preview';
+export const textModel = (envName: string) => process.env[envName] || 'gemini-3.8-flash';

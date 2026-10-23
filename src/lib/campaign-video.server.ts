@@ -1,66 +1,85 @@
-import { VIDEO_SECONDS } from './video-prompt';
-
 /**
- * Vidéo de campagne via Veo (API Gemini), avec la clé API Google du vendeur :
+ * Vidéo de campagne via Gemini Omni Flash (API Interactions de Gemini), avec la clé API Google du vendeur :
  * la génération est facturée par Google directement sur le compte du vendeur.
- * Flux asynchrone de l'API Gemini : lancement (predictLongRunning) puis interrogation de l'opération.
+ * Les modèles Veo 3.1 en préversion ont été arrêtés par Google le 22 octobre 2026.
+ * Flux : lancement en arrière-plan (background=true) puis interrogation de l'interaction.
+ * Source : https://ai.google.dev/gemini-api/docs/omni et /background-execution
  */
 const API = 'https://generativelanguage.googleapis.com/v1beta';
-// Repli demandé ; Google annonce l'arrêt de ces previews le 22 octobre 2026.
-// Un modèle de remplacement nécessite de vérifier également son contrat API.
-const model = () => process.env['VIDEO_MODEL'] || 'veo-3.1-generate-preview';
+const API_REVISION = '2026-05-20';
+const model = () => process.env['VIDEO_MODEL'] || 'gemini-omni-1.1-flash';
 
 type GoogleError = { error?: { code?: number; message?: string; status?: string } };
 
 async function googleError(response: Response): Promise<never> {
   const body = await response.json().catch(() => ({})) as GoogleError;
   const status = body.error?.code ?? response.status;
-  const error = new Error(`Google Veo: ${body.error?.status ?? response.status} ${body.error?.message ?? ''}`.trim());
+  const error = new Error(`Google Omni: ${body.error?.status ?? response.status} ${body.error?.message ?? ''}`.trim());
   (error as Error & { statusCode: number }).statusCode = status;
   throw error;
 }
 
-/** Lance un job vidéo asynchrone (clip vertical 9:16). Facturé par Google au compte du vendeur. */
+const headers = (apiKey: string) => ({ 'Content-Type': 'application/json', 'x-goog-api-key': apiKey, 'Api-Revision': API_REVISION });
+
+/** Lance une génération vidéo en arrière-plan (clip vertical 9:16, 720p). Facturé par Google au compte du vendeur. */
 export async function submitCampaignVideo(prompt: string, apiKey: string) {
-  const response = await fetch(`${API}/models/${model()}:predictLongRunning`, {
+  const response = await fetch(`${API}/interactions`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+    headers: headers(apiKey),
     body: JSON.stringify({
-      instances: [{ prompt }],
-      parameters: { aspectRatio: '9:16', durationSeconds: VIDEO_SECONDS, resolution: '720p' },
+      model: model(),
+      input: prompt,
+      background: true,
+      response_format: { type: 'video', aspect_ratio: '9:16', resolution: '720p' },
     }),
+    signal: AbortSignal.timeout(30000),
   });
   if (!response.ok) await googleError(response);
-  const operation = await response.json() as { name?: string };
-  if (!operation.name) throw new Error('Google Veo: opération sans identifiant.');
-  return { jobId: operation.name, model: model() };
+  const interaction = await response.json() as { id?: string };
+  if (!interaction.id) throw new Error('Google Omni: interaction sans identifiant.');
+  return { jobId: interaction.id, model: model() };
 }
 
 export type VideoJob =
   | { status: 'generating'; progress?: number }
   | { status: 'failed'; error?: string }
-  | { status: 'completed'; url: string };
+  | { status: 'completed'; data?: Uint8Array; url?: string };
 
-/** Interroge l'opération Veo. L'URL retournée exige l'en-tête x-goog-api-key au téléchargement. */
+type VideoPart = { type?: string; mime_type?: string; data?: string; uri?: string };
+type Interaction = {
+  status?: string;
+  error?: { code?: number; message?: string };
+  steps?: { type?: string; content?: VideoPart[] }[];
+  outputs?: VideoPart[];
+  output_video?: VideoPart;
+};
+
+/** Cherche la vidéo générée : contenu "video" d'une étape de sortie, avec repli sur les champs de commodité. */
+export function extractVideo(interaction: Interaction): VideoPart | undefined {
+  const fromSteps = (interaction.steps ?? []).flatMap(step => step.content ?? []).find(part => part.type === 'video' && (part.data || part.uri));
+  return fromSteps ?? (interaction.outputs ?? []).find(part => part.type === 'video' && (part.data || part.uri)) ?? (interaction.output_video?.data || interaction.output_video?.uri ? interaction.output_video : undefined);
+}
+
+function decodeBase64(value: string) {
+  const binary = atob(value);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
+/** Interroge l'interaction. La lecture renvoie la vidéo en base64 (ou une URI à télécharger avec la clé du vendeur). */
 export async function pollCampaignVideo(jobId: string, apiKey: string): Promise<VideoJob> {
-  const response = await fetch(`${API}/${jobId}`, { headers: { 'x-goog-api-key': apiKey } });
+  const response = await fetch(`${API}/interactions/${encodeURIComponent(jobId)}`, { headers: headers(apiKey), signal: AbortSignal.timeout(60000) });
   if (!response.ok) await googleError(response);
-  const operation = await response.json() as {
-    done?: boolean;
-    error?: { code?: number; message?: string };
-    response?: {
-      generateVideoResponse?: { generatedSamples?: { video?: { uri?: string } }[] };
-      videos?: { uri?: string; gcsUri?: string }[];
-      raiMediaFilteredCount?: number;
-    };
-  };
-  if (operation.error) return { status: 'failed', error: operation.error.message ?? 'Échec inconnu.' };
-  if (!operation.done) return { status: 'generating' };
-  const uri = operation.response?.generateVideoResponse?.generatedSamples?.[0]?.video?.uri
-    ?? operation.response?.videos?.[0]?.uri
-    ?? operation.response?.videos?.[0]?.gcsUri;
-  if (!uri) return { status: 'failed', error: 'Vidéo filtrée ou absente de la réponse.' };
-  return { status: 'completed', url: uri };
+  const interaction = await response.json() as Interaction;
+  const status = interaction.status ?? 'in_progress';
+  if (status === 'in_progress' || status === 'queued') return { status: 'generating' };
+  if (status !== 'completed') return { status: 'failed', error: interaction.error?.message ?? `Interaction ${status}.` };
+  const video = extractVideo(interaction);
+  if (!video) return { status: 'failed', error: 'Vidéo filtrée ou absente de la réponse.' };
+  if (video.data) return { status: 'completed', data: decodeBase64(video.data) };
+  if (!video.uri) return { status: 'failed', error: 'Vidéo filtrée ou absente de la réponse.' };
+  return { status: 'completed', url: video.uri };
 }
 
 /** N'accepte que des URL https sur googleapis.com (ou un sous-domaine) avant d'y envoyer la clé. */

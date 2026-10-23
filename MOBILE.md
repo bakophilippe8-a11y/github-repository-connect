@@ -1,6 +1,6 @@
 # Application Android (APK)
 
-L'APK est une enveloppe Capacitor qui ouvre l'application publiée (`APP_URL`, par défaut `https://github-harbor-connector.lovable.app`). Mettre à jour l'application web met à jour l'APK sans le recompiler.
+L'APK est une enveloppe Capacitor qui ouvre l'application publiée (`APP_URL`, par défaut `https://pixel-perfect-display-706.lovable.app`). Mettre à jour l'application web met à jour l'APK sans le recompiler.
 
 ## Obtenir l'APK (sans rien installer sur votre ordinateur)
 1. Envoyez le projet sur GitHub (Lovable → Connecteurs → GitHub, ou dépôt GitHub existant).
@@ -21,9 +21,9 @@ GitHub → Settings → Secrets and variables → Actions : créez `KEYSTORE_BAS
 Nom : `capacitor.config.ts` (`appName`) · Identifiant : `appId` + `applicationId` dans `android/app/build.gradle` · Icône : remplacez `assets/icon-only.png` (1024×1024 conseillé).
 
 ## Clé IA de chaque vendeur
-L'application n'utilise aucun crédit Lovable : chaque vendeur colle sa propre clé API Google (Gemini) dans **Paramètres API → Clé IA**. La clé est chiffrée côté serveur et les appels IA (réponses, brouillons, vidéos Veo) sont facturés par Google directement sur le compte du vendeur. Sans clé enregistrée, les fonctions IA affichent un message renvoyant vers cet écran.
+L'application n'utilise aucun crédit Lovable : chaque vendeur colle sa propre clé API Google (Gemini) dans **Paramètres API → Clé IA**. La clé est chiffrée côté serveur et les appels IA (réponses, brouillons, vidéos Gemini Omni) sont facturés par Google directement sur le compte du vendeur. Sans clé enregistrée, les fonctions IA affichent un message renvoyant vers cet écran.
 
-Attention : la documentation Google consultée le 23 octobre 2026 annonce l'arrêt de `veo-3.1-generate-preview` et `veo-3.1-fast-generate-preview` depuis le 22 octobre. La valeur de repli `VIDEO_MODEL=veo-3.1-generate-preview` ne garantit donc plus une génération fonctionnelle. Google recommande Gemini Omni Flash ou les modèles GA de Gemini Enterprise Agent Platform ; leur intégration nécessite de vérifier le contrat API, pas simplement de changer le nom du modèle. Aucun remplacement du modèle texte n'a été effectué. Source : https://ai.google.dev/gemini-api/docs/veo.
+Vidéo : Google a arrêté les modèles Veo 3.1 en préversion le 22 octobre 2026. La génération utilise désormais Gemini Omni Flash (`gemini-omni-1.1-flash`, API Interactions en arrière-plan), modifiable avec la variable `VIDEO_MODEL`. Modèle texte par défaut : `gemini-3.8-flash` (variables `SALES_DECISION_MODEL`, `ADS_DRAFT_MODEL`, `ADS_SCRIPT_MODEL`). Sources : https://ai.google.dev/gemini-api/docs/omni et https://ai.google.dev/gemini-api/docs/deprecations.
 
 ## Mettre à jour l'APK
 1. Modifiez l'application dans Lovable et publiez-la : l'APK existant charge automatiquement la nouvelle version (il ouvre `APP_URL`).

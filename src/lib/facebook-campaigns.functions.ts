@@ -197,12 +197,19 @@ export const checkCampaignVideo = createServerFn({ method: 'POST' }).middleware(
         await failVideo(supabaseAdmin, context.userId, data.id, 'La vidéo n’a pas pu être générée (contenu refusé ou incident du service). Modifiez le prompt puis réessayez.');
         return { status: 'failed', error: 'Échec de génération.' };
       }
-      if (job.status !== 'completed' || !job.url) return { status: 'generating', error: null, progress: job.status === 'generating' ? (job.progress ?? null) : null };
-      // Copie durable : le lien du fournisseur est temporaire et exige la clé du vendeur.
-      const file = await downloadCampaignVideo(job.url, apiKey);
-      const size = Number(file.headers.get('content-length') ?? 0);
-      if (!file.ok || size > 100 * 1024 * 1024) throw new SafeError('Impossible de récupérer la vidéo générée.');
-      const bytes = await file.arrayBuffer();
+      if (job.status !== 'completed') return { status: 'generating', error: null, progress: job.progress ?? null };
+      // Copie durable : une vidéo fournie par adresse est temporaire et exige la clé du vendeur.
+      let bytes: ArrayBuffer;
+      if (job.data) {
+        bytes = job.data.buffer.slice(job.data.byteOffset, job.data.byteOffset + job.data.byteLength) as ArrayBuffer;
+      } else if (job.url) {
+        const file = await downloadCampaignVideo(job.url, apiKey);
+        const size = Number(file.headers.get('content-length') ?? 0);
+        if (!file.ok || size > 100 * 1024 * 1024) throw new SafeError('Impossible de récupérer la vidéo générée.');
+        bytes = await file.arrayBuffer();
+      } else {
+        throw new SafeError('Impossible de récupérer la vidéo générée.');
+      }
       if (bytes.byteLength > 100 * 1024 * 1024) throw new SafeError('La vidéo générée dépasse la taille autorisée.');
       const path = `${context.userId}/${data.id}-${crypto.randomUUID()}.mp4`;
       const stored = await supabaseAdmin.storage.from('campaign-videos').upload(path, bytes, { contentType: 'video/mp4', upsert: false });

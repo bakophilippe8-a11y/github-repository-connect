@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { downloadCampaignVideo, extractVideo, isTrustedGoogleVideoUrl, pollCampaignVideo, submitCampaignVideo } from './campaign-video.server';
+import { downloadCampaignVideo, ensureVideoBucket, extractVideo, isTrustedGoogleVideoUrl, pollCampaignVideo, submitCampaignVideo } from './campaign-video.server';
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllEnvs(); });
@@ -71,5 +71,31 @@ describe('URL de téléchargement vidéo', () => {
     const spy = vi.spyOn(globalThis, 'fetch');
     await expect(downloadCampaignVideo('https://evil.com/v.mp4', 'KEY')).rejects.toThrow('domaine non Google');
     expect(spy).not.toHaveBeenCalled();
+  });
+});
+
+describe('stockage privé des vidéos', () => {
+  const admin = (error: { message: string } | null) => { const createBucket = vi.fn().mockResolvedValue({ error }); return { admin: { storage: { createBucket } }, createBucket }; };
+  it('crée le bucket privé limité à la vidéo MP4', async () => {
+    vi.resetModules();
+    const { ensureVideoBucket: fresh } = await import('./campaign-video.server');
+    const { admin: a, createBucket } = admin(null);
+    await fresh(a);
+    expect(createBucket).toHaveBeenCalledWith('campaign-videos', { public: false, fileSizeLimit: 100 * 1024 * 1024, allowedMimeTypes: ['video/mp4'] });
+  });
+  it('ignore « existe déjà » et refuse les autres erreurs', async () => {
+    vi.resetModules();
+    const m = await import('./campaign-video.server');
+    await expect(m.ensureVideoBucket(admin({ message: 'The resource already exists' }).admin)).resolves.toBeUndefined();
+    vi.resetModules();
+    const n = await import('./campaign-video.server');
+    await expect(n.ensureVideoBucket(admin({ message: 'permission denied' }).admin)).rejects.toThrow('Stockage vidéo');
+  });
+  it('ne le recrée pas à chaque appel', async () => {
+    vi.resetModules();
+    const m = await import('./campaign-video.server');
+    const { admin: a, createBucket } = admin(null);
+    await m.ensureVideoBucket(a); await m.ensureVideoBucket(a);
+    expect(createBucket).toHaveBeenCalledTimes(1);
   });
 });

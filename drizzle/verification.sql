@@ -1,0 +1,7 @@
+select
+ (select count(*) from pg_tables where schemaname='public' and rowsecurity and tablename in ('products','leads','lead_events','seller_connections','sales_guidelines','sales_conversations','sales_messages','sales_campaigns','sales_inbox','sales_processing_locks','sales_product_views')) as tables_rls,
+ (select count(*) from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname in ('claim_sales_lock','set_sales_mode','commit_sales_decision','register_sales_optout')) as fonctions,
+ (select position('c.contact_name' in pg_get_functiondef('public.commit_sales_decision(uuid,uuid,integer,jsonb)'::regprocedure)) > 0 and position('c.id::text' in pg_get_functiondef('public.commit_sales_decision(uuid,uuid,integer,jsonb)'::regprocedure)) = 0) as titre_ok,
+ (select count(*) from information_schema.columns where table_schema='public' and ((table_name='sales_campaigns' and column_name in ('video_status','video_path','published_at','facebook_post_id','publish_error')) or (table_name='sales_guidelines' and column_name in ('daily_ai_limit','daily_ads_limit','daily_video_limit')))) as colonnes,
+ (select bool_and(pg_get_constraintdef(oid) like '%''ai''%') from pg_constraint where conname='seller_connections_channel_check') as canal_ai,
+ (select bool_and(pg_get_constraintdef(oid) like '%publishing%') from pg_constraint where conname='sales_campaigns_status_check') as statuts

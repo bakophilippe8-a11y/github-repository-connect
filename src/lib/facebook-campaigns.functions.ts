@@ -190,7 +190,7 @@ export const checkCampaignVideo = createServerFn({ method: 'POST' }).middleware(
     try {
       const { getSellerGeminiKey } = await import('./ai/gemini.server');
       const apiKey = await getSellerGeminiKey(context.userId);
-      const { pollCampaignVideo, downloadCampaignVideo } = await import('./campaign-video.server');
+      const { pollCampaignVideo, downloadCampaignVideo, ensureVideoBucket } = await import('./campaign-video.server');
       const job = await pollCampaignVideo(row.data.video_job_id, apiKey);
       if (job.status === 'failed') {
         console.error('[video] job échoué', data.id, job.error);
@@ -211,6 +211,7 @@ export const checkCampaignVideo = createServerFn({ method: 'POST' }).middleware(
         throw new SafeError('Impossible de récupérer la vidéo générée.');
       }
       if (bytes.byteLength > 100 * 1024 * 1024) throw new SafeError('La vidéo générée dépasse la taille autorisée.');
+      await ensureVideoBucket(supabaseAdmin);
       const path = `${context.userId}/${data.id}-${crypto.randomUUID()}.mp4`;
       const stored = await supabaseAdmin.storage.from('campaign-videos').upload(path, bytes, { contentType: 'video/mp4', upsert: false });
       if (stored.error) { console.error('[video] stockage', stored.error.message); throw new SafeError('Impossible d’enregistrer la vidéo générée.'); }

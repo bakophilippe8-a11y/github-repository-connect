@@ -98,3 +98,14 @@ export async function downloadCampaignVideo(url: string, apiKey: string) {
   if (!file.ok) await googleError(file);
   return file;
 }
+
+type BucketAdmin = { storage: { createBucket: (id: string, options: { public: boolean; fileSizeLimit: number; allowedMimeTypes: string[] }) => Promise<{ error: { message: string } | null }> } };
+let bucketReady = false;
+
+/** Crée le stockage privé des vidéos au premier usage (aucune étape manuelle) ; sans effet s'il existe déjà. */
+export async function ensureVideoBucket(admin: BucketAdmin) {
+  if (bucketReady) return;
+  const { error } = await admin.storage.createBucket('campaign-videos', { public: false, fileSizeLimit: 100 * 1024 * 1024, allowedMimeTypes: ['video/mp4'] });
+  if (error && !/already exists|duplicate/i.test(error.message)) throw new Error(`Stockage vidéo: ${error.message}`);
+  bucketReady = true;
+}

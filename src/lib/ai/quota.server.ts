@@ -1,4 +1,4 @@
-import type { supabaseAdmin } from '@/integrations/supabase/client.server';
+import type { supabaseAdmin } from '@/lib/app-database.server';
 
 type Db = typeof supabaseAdmin;
 const since = () => new Date(Date.now() - 24 * 3600 * 1000).toISOString();

@@ -31,3 +31,5 @@ Vidéo : Google a arrêté les modèles Veo 3.1 en préversion le 22 octobre 202
 
 ## Dans la WebView Android
 La session de connexion persiste après fermeture de l'app (stockage local de la WebView conservé). Les liens externes (Facebook, Google AI Studio) s'ouvrent avec `target="_blank"` dans le navigateur du téléphone. L'interface est utilisable sur petit écran et la vidéo se lit en plein écran (`playsInline`).
+
+- Base neuve : exécuter une seule fois `drizzle/schema-complet.sql` (schéma de base + migrations 0000 à 0004, testé sur PostgreSQL), puis définir le secret `SELLER_CREDENTIALS_SECRET`.

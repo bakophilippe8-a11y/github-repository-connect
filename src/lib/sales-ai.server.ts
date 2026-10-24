@@ -12,7 +12,7 @@ const ndjson = (events: unknown[], status = 200) => new Response(events.map(e =>
 const transfer = (reason: string): Decision => ({ action: 'TRANSFER_TO_HUMAN', message: '', reason, facebook_copy: null, voiceover_script: null });
 
 export async function salesDecision(request: Request, userId: string, conversationId: string, message: string) {
-  const { supabaseAdmin: db } = await import('@/integrations/supabase/client.server');
+  const { supabaseAdmin: db } = await import('@/lib/app-database.server');
   const conversation = await db.from('sales_conversations').select('*').eq('id', conversationId).eq('user_id', userId).single();
   if (conversation.error) return Response.json({ error: 'Conversation introuvable.' }, { status: 404 });
   if (!canAutomate(conversation.data.status, conversation.data.opted_out)) return Response.json({ error: 'Les réponses automatiques sont suspendues pour cette conversation.' }, { status: 409 });

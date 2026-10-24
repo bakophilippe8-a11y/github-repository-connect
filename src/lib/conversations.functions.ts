@@ -1,6 +1,6 @@
 import { createServerFn } from '@tanstack/react-start';
 import { z } from 'zod';
-import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware';
+import { requireSupabaseAuth } from '@/lib/app-auth';
 
 export const getConversations = createServerFn({ method: 'GET' }).middleware([requireSupabaseAuth]).handler(async ({ context }) => {
   const result = await context.supabase.from('sales_conversations').select('*').order('updated_at', { ascending: false });
@@ -14,7 +14,7 @@ export const getConversationHistory = createServerFn({ method: 'GET' }).middlewa
     const conversation = await context.supabase.from('sales_conversations').select('*').eq('id', data.id).single();
     if (conversation.error) throw new Error('Conversation introuvable.');
     // Page through the history rather than silently truncating at the Data API limit.
-    const messages: import('@/integrations/supabase/types').Database['public']['Tables']['sales_messages']['Row'][] = [];
+    const messages: import('@/lib/app-database.types').Database['public']['Tables']['sales_messages']['Row'][] = [];
     for (let offset = 0; ; offset += 500) {
       const page = await context.supabase.from('sales_messages').select('*').eq('conversation_id', data.id).order('created_at').order('id').range(offset, offset + 499);
       if (page.error) throw new Error('Impossible de charger l’historique.');
@@ -38,7 +38,7 @@ export const sendManualMessage = createServerFn({ method: 'POST' }).middleware([
     if (conversation.data.opted_out) throw new Error('Ce contact a refusé les messages.');
     // No external receiver/transport is activated yet. Never simulate a provider send.
     if (conversation.data.channel !== 'internal') return { ok: false, error: 'L’envoi client attend l’activation de la réception et de l’envoi de ce canal dans Paramètres API.' };
-    const { supabaseAdmin: db } = await import('@/integrations/supabase/client.server');
+    const { supabaseAdmin: db } = await import('@/lib/app-database.server');
     const mode = await db.rpc('set_sales_mode', { owner_id: context.userId, conversation: data.id, next_status: 'human' });
     if (mode.error || !mode.data) throw new Error('Impossible de suspendre l’IA.');
     const saved = await db.from('sales_messages').insert({ id: data.requestId, user_id: context.userId, conversation_id: data.id, content: data.content, direction: 'outbound', author: 'human', status: 'internal' });

@@ -1,7 +1,7 @@
 import { createServerFn } from '@tanstack/react-start';
 import { getRequest } from '@tanstack/react-start/server';
 import { z } from 'zod';
-import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware';
+import { requireSupabaseAuth } from '@/lib/app-auth';
 import { campaignDraft, campaignReview } from './facebook-campaign-rules';
 import { classifyAiFailure, SafeError, shouldPauseAi } from './ai/errors.server';
 import { campaignQuotaExceeded, videoQuotaExceeded } from './ai/quota.server';
@@ -29,7 +29,7 @@ export const generateFacebookCampaign = createServerFn({ method: 'POST' }).middl
     if (data.productId) query = query.eq('id', data.productId);
     const products = await query;
     if (products.error || (data.productId && !products.data?.length)) throw new Error('Produit indisponible.');
-    const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
+    const { supabaseAdmin } = await import('@/lib/app-database.server');
     if (await campaignQuotaExceeded(supabaseAdmin, context.userId, guidelines.data?.daily_ads_limit)) throw new Error('Plafond quotidien de brouillons IA atteint. Réessayez demain.');
     try {
       const { generateFacebookDraft } = await import('./facebook-campaign-ai.server');
@@ -64,7 +64,7 @@ export const generateConversationScript = createServerFn({ method: 'POST' }).mid
       ? await context.supabase.from('products').select('nom,prix,devise,argument_cle').eq('user_id', context.userId).in('id', ids)
       : await context.supabase.from('products').select('nom,prix,devise,argument_cle').eq('user_id', context.userId).eq('statut', 'actif');
     if (products.error) throw new Error('Impossible de charger vos produits.');
-    const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
+    const { supabaseAdmin } = await import('@/lib/app-database.server');
     if (await campaignQuotaExceeded(supabaseAdmin, context.userId, guidelines.data?.daily_ads_limit)) throw new Error('Plafond quotidien de brouillons IA atteint. Réessayez demain.');
     try {
       const { buildScriptContext } = await import('./script-context');
@@ -90,7 +90,7 @@ export const generateConversationScript = createServerFn({ method: 'POST' }).mid
 export const saveFacebookCampaign = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth])
   .inputValidator((input) => content.extend({ id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
-    const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
+    const { supabaseAdmin } = await import('@/lib/app-database.server');
     const saved = await supabaseAdmin.from('sales_campaigns').update(campaignDraft(data.title, data.facebook_copy, data.voiceover_script)).eq('id', data.id).eq('user_id', context.userId).in('status', [...EDITABLE_CAMPAIGN_STATUSES]).select('id').single();
     if (saved.error) throw new Error('Cette publicité ne peut plus être modifiée (déjà publiée ou en cours de publication).');
     return { ok: true };
@@ -99,7 +99,7 @@ export const saveFacebookCampaign = createServerFn({ method: 'POST' }).middlewar
 export const reviewFacebookCampaign = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth])
   .inputValidator((input) => content.extend({ id: z.string().uuid(), approved: z.boolean() }).parse(input))
   .handler(async ({ data, context }) => {
-    const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
+    const { supabaseAdmin } = await import('@/lib/app-database.server');
     const saved = await supabaseAdmin.from('sales_campaigns').update(campaignReview(data.approved, new Date().toISOString())).eq('id', data.id).eq('user_id', context.userId).eq('title', data.title).eq('facebook_copy', data.facebook_copy).eq('voiceover_script', data.voiceover_script).in('status', [...EDITABLE_CAMPAIGN_STATUSES]).neq('video_status', 'generating').select('id').single();
     if (saved.error) throw new Error('La publicité a changé ou n’est plus disponible. Actualisez avant de la valider.');
     return { ok: true };
@@ -108,7 +108,7 @@ export const reviewFacebookCampaign = createServerFn({ method: 'POST' }).middlew
 export const publishFacebookCampaign = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({ id: z.string().uuid(), facebook_copy: z.string().trim().min(1).max(4000) }).parse(input))
   .handler(async ({ data, context }) => {
-    const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
+    const { supabaseAdmin } = await import('@/lib/app-database.server');
     const connection = await supabaseAdmin.from('seller_connections').select('credentials_ciphertext').eq('user_id', context.userId).eq('channel', 'meta').maybeSingle();
     if (connection.error) throw new Error('Impossible de lire votre connexion Facebook.');
     if (!connection.data) throw new Error('Connectez votre Page Facebook dans Paramètres API avant de publier.');
@@ -148,13 +148,13 @@ export const publishFacebookCampaign = createServerFn({ method: 'POST' }).middle
 
 
 const VIDEO_TIMEOUT_MS = 15 * 60 * 1000;
-const failVideo = (admin: Awaited<typeof import('@/integrations/supabase/client.server')>['supabaseAdmin'], userId: string, id: string, message: string) =>
+const failVideo = (admin: Awaited<typeof import('@/lib/app-database.server')>['supabaseAdmin'], userId: string, id: string, message: string) =>
   admin.from('sales_campaigns').update({ video_status: 'failed', video_error: message }).eq('id', id).eq('user_id', userId).eq('video_status', 'generating');
 
 export const startCampaignVideo = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({ id: z.string().uuid(), prompt: z.string().trim().min(10).max(VIDEO_PROMPT_MAX) }).parse(input))
   .handler(async ({ data, context }) => {
-    const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
+    const { supabaseAdmin } = await import('@/lib/app-database.server');
     const guidelines = await supabaseAdmin.from('sales_guidelines').select('ai_paused,pause_reason,daily_video_limit').eq('user_id', context.userId).maybeSingle();
     if (guidelines.error) throw new Error('Impossible de lire vos consignes.');
     if (guidelines.data?.ai_paused) throw new Error(guidelines.data.pause_reason || 'La génération IA est suspendue.');
@@ -180,7 +180,7 @@ export const startCampaignVideo = createServerFn({ method: 'POST' }).middleware(
 export const checkCampaignVideo = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({ id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
-    const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
+    const { supabaseAdmin } = await import('@/lib/app-database.server');
     const row = await supabaseAdmin.from('sales_campaigns').select('video_status,video_job_id,video_started_at,video_path,video_error').eq('id', data.id).eq('user_id', context.userId).single();
     if (row.error) throw new Error('Publicité introuvable.');
     if (row.data.video_status !== 'generating') return { status: row.data.video_status, error: row.data.video_error };
@@ -230,7 +230,7 @@ export const getCampaignVideoUrl = createServerFn({ method: 'GET' }).middleware(
   .handler(async ({ data, context }) => {
     const row = await context.supabase.from('sales_campaigns').select('video_path').eq('id', data.id).eq('user_id', context.userId).single();
     if (row.error || !row.data.video_path) throw new Error('Aucune vidéo disponible.');
-    const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
+    const { supabaseAdmin } = await import('@/lib/app-database.server');
     const signed = await supabaseAdmin.storage.from('campaign-videos').createSignedUrl(row.data.video_path, 3600);
     if (signed.error || !signed.data) throw new Error('Impossible de charger la vidéo.');
     return { url: signed.data.signedUrl };

@@ -7,7 +7,7 @@ import { SafeError } from './errors.server';
  * Chaque vendeur paie Google directement ; aucun appel IA ne passe par une passerelle tierce.
  */
 export async function getSellerGeminiKey(userId: string): Promise<string> {
-  const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
+  const { supabaseAdmin } = await import('@/lib/app-database.server');
   const saved = await supabaseAdmin.from('seller_connections').select('credentials_ciphertext').eq('user_id', userId).eq('channel', 'ai').maybeSingle();
   if (saved.error) throw new SafeError('Impossible de lire votre clé IA.');
   if (!saved.data) throw new SafeError('Aucune clé IA enregistrée. Ajoutez votre clé API Google (Gemini) dans Paramètres API, section « Clé IA ».');

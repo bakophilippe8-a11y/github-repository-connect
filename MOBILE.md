@@ -1,6 +1,6 @@
 # Application Android (APK)
 
-L'APK est une enveloppe Capacitor qui ouvre l'application publiée (`APP_URL`, par défaut `https://pixel-perfect-display-706.lovable.app`). Mettre à jour l'application web met à jour l'APK sans le recompiler.
+L'APK est une enveloppe Capacitor qui ouvre l'application publiée (`APP_URL`, par défaut `https://github-harbor-connector.lovable.app`). Mettre à jour l'application web met à jour l'APK sans le recompiler.
 
 ## Obtenir l'APK (sans rien installer sur votre ordinateur)
 1. Envoyez le projet sur GitHub (Lovable → Connecteurs → GitHub, ou dépôt GitHub existant).

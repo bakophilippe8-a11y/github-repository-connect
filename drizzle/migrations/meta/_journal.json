@@ -36,6 +36,13 @@
       "when": 1792716000000,
       "tag": "0004_seller_ai_key",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1792889148382,
+      "tag": "0005_schema_cloud_complet",
+      "breakpoints": true
     }
   ]
 }

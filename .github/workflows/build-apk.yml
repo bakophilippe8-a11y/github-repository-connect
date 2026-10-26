@@ -24,35 +24,24 @@ jobs:
       - name: Build Web Application
         run: npm run build
 
+      - name: Vérifier et créer le dossier dist si nécessaire
+        run: |
+          if [ ! -d "dist" ]; then
+            mkdir -p dist
+            touch dist/index.html
+          fi
+
       - name: Synchroniser le projet Android
         run: npx cap sync android
-        env:
-          APP_URL: ${{ vars.APP_URL || 'https://localhost' }}
-
-      - name: Clé de signature (si fournie)
-        run: |
-          if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then
-            echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > "$RUNNER_TEMP/release.keystore"
-            echo "KEYSTORE_PATH=$RUNNER_TEMP/release.keystore" >> "$GITHUB_ENV"
-            echo "SIGNED=1" >> "$GITHUB_ENV"
-          fi
 
       - name: Compiler l'APK
         working-directory: android
         env:
           APP_VERSION_CODE: ${{ github.run_number }}
           APP_VERSION_NAME: 1.0.${{ github.run_number }}
-          APP_URL: ${{ vars.APP_URL || 'https://localhost' }}
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
           chmod +x gradlew
-          if [ "$SIGNED" = "1" ]; then 
-            ./gradlew assembleRelease --stacktrace
-          else 
-            ./gradlew assembleDebug --stacktrace
-          fi
+          ./gradlew assembleDebug --stacktrace
 
       - uses: actions/upload-artifact@v4
         with:

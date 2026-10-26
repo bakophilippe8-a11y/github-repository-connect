@@ -1,13 +1,18 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
-// URL de l'application publiée (Lovable). Modifiable sans toucher au code : APP_URL=https://… npx cap sync
-const url = process.env['APP_URL'] || 'https://github-harbor-connector.lovable.app';
-
 const config: CapacitorConfig = {
   appId: 'com.bladers.agentsia',
   appName: 'Agents IA',
-  webDir: 'mobile/www',
-  server: { url, cleartext: false, errorPath: 'index.html' },
-  android: { allowMixedContent: false },
+  webDir: 'dist',
+  server: {
+    // Force Capacitor à servir les fichiers locaux et requêtes sous le schéma sécurisé HTTPS
+    androidScheme: 'https',
+    cleartext: true,
+    errorPath: 'index.html'
+  },
+  android: {
+    allowMixedContent: true
+  }
 };
+
 export default config;

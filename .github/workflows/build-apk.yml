@@ -30,7 +30,7 @@ jobs:
       # CAPACITOR_SERVER_URL to its real deployed HTTPS URL.
       - name: Préparer les fichiers web pour Capacitor
         env:
-          CAPACITOR_SERVER_URL: ${{ vars.CAPACITOR_SERVER_URL }}
+          CAPACITOR_SERVER_URL: ${{ vars.CAPACITOR_SERVER_URL || 'https://github-harbor-connector.lovable.app' }}
         run: |
           set -eu
           if [ -n "${CAPACITOR_SERVER_URL:-}" ]; then
@@ -65,7 +65,7 @@ jobs:
 
       - name: Synchroniser le projet Android
         env:
-          CAPACITOR_SERVER_URL: ${{ vars.CAPACITOR_SERVER_URL }}
+          CAPACITOR_SERVER_URL: ${{ vars.CAPACITOR_SERVER_URL || 'https://github-harbor-connector.lovable.app' }}
         run: npx cap sync android
 
       - name: Compiler l'APK

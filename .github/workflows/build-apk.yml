@@ -24,13 +24,10 @@ jobs:
       - name: Build Web Application
         run: npm run build
 
-      - name: Icônes Android
-        run: npx capacitor-assets generate --android --iconBackgroundColor '#14161c' --iconBackgroundColorDark '#14161c' || true
-
       - name: Synchroniser le projet Android
         run: npx cap sync android
         env:
-          APP_URL: ${{ vars.APP_URL }}
+          APP_URL: ${{ vars.APP_URL || 'https://localhost' }}
 
       - name: Clé de signature (si fournie)
         run: |
@@ -45,12 +42,17 @@ jobs:
         env:
           APP_VERSION_CODE: ${{ github.run_number }}
           APP_VERSION_NAME: 1.0.${{ github.run_number }}
+          APP_URL: ${{ vars.APP_URL || 'https://localhost' }}
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
           chmod +x gradlew
-          if [ "$SIGNED" = "1" ]; then ./gradlew assembleRelease; else ./gradlew assembleDebug; fi
+          if [ "$SIGNED" = "1" ]; then 
+            ./gradlew assembleRelease --stacktrace
+          else 
+            ./gradlew assembleDebug --stacktrace
+          fi
 
       - uses: actions/upload-artifact@v4
         with:

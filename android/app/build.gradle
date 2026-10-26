@@ -3,20 +3,25 @@ apply plugin: 'com.android.application'
 android {
     namespace = "com.bladers.agentsia"
     compileSdk = rootProject.ext.compileSdkVersion
+
     defaultConfig {
         applicationId "com.bladers.agentsia"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        // Incrémentés automatiquement par la CI (APP_VERSION_CODE = numéro d'exécution) pour permettre les mises à jour.
-        versionCode (System.getenv('APP_VERSION_CODE') ?: '1').toInteger()
-        versionName System.getenv('APP_VERSION_NAME') ?: '1.0'
+
+        // Conversion sécurisée des variables d'environnement
+        def envVersionCode = System.getenv("APP_VERSION_CODE")
+        versionCode = envVersionCode ? envVersionCode.toInteger() : 1
+
+        def envVersionName = System.getenv("APP_VERSION_NAME")
+        versionName = envVersionName ?: "1.0.0"
+
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
-             // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
-             // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
-            ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
+             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+
     signingConfigs {
         release {
             def keystorePath = System.getenv('KEYSTORE_PATH')
@@ -28,6 +33,7 @@ android {
             }
         }
     }
+
     buildTypes {
         release {
             if (System.getenv('KEYSTORE_PATH')) { signingConfig signingConfigs.release }

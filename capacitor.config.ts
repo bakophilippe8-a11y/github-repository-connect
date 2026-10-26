@@ -3,7 +3,8 @@ import type { CapacitorConfig } from '@capacitor/cli';
 // TanStack Start/Nitro is a server-rendered app. Set the GitHub repository
 // variable CAPACITOR_SERVER_URL to the deployed HTTPS app URL when the APK
 // should load the hosted application instead of relying on a static export.
-const serverUrl = process.env.CAPACITOR_SERVER_URL?.trim();
+const serverUrl =
+  process.env.CAPACITOR_SERVER_URL?.trim() || 'https://github-harbor-connector.lovable.app';
 
 if (serverUrl && !/^https:\/\//i.test(serverUrl)) {
   throw new Error('CAPACITOR_SERVER_URL must be an HTTPS URL.');

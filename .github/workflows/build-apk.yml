@@ -13,25 +13,59 @@ jobs:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-java@v4
-        with: { distribution: temurin, java-version: '21' }
+        with:
+          distribution: temurin
+          java-version: '21'
 
       - uses: actions/setup-node@v4
-        with: { node-version: '22' }
+        with:
+          node-version: '22'
+          cache: npm
 
-      - name: Dépendances
+      - name: Installer les dépendances
         run: npm install --no-audit --no-fund --legacy-peer-deps
 
-      - name: Build Web Application
-        run: npm run build
-
-      - name: Vérifier et créer le dossier dist si nécessaire
+      # TanStack Start/Nitro builds a server application, not necessarily a
+      # static SPA. For a server-rendered app, set repository variable
+      # CAPACITOR_SERVER_URL to its real deployed HTTPS URL.
+      - name: Préparer les fichiers web pour Capacitor
+        env:
+          CAPACITOR_SERVER_URL: ${{ vars.CAPACITOR_SERVER_URL }}
         run: |
-          if [ ! -d "dist" ]; then
+          set -eu
+          if [ -n "${CAPACITOR_SERVER_URL:-}" ]; then
+            case "$CAPACITOR_SERVER_URL" in
+              https://*) ;;
+              *) echo "::error::CAPACITOR_SERVER_URL doit être une URL HTTPS."; exit 1 ;;
+            esac
             mkdir -p dist
-            touch dist/index.html
+            cat > dist/index.html <<'HTML'
+          <!doctype html>
+          <html lang="fr">
+            <head>
+              <meta charset="utf-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1">
+              <title>Agents IA</title>
+              <style>body{font:16px system-ui,sans-serif;background:#14161c;color:#fff;display:grid;min-height:100vh;place-items:center;margin:0}main{max-width:28rem;padding:2rem;text-align:center}p{color:#c8cad0}</style>
+            </head>
+            <body><main><h1>Agents IA</h1><p>Connexion à l’application…</p><p>Si cet écran reste affiché, vérifiez votre connexion Internet et l’adresse de déploiement configurée.</p></main></body>
+          </html>
+          HTML
+            echo "Mode hébergé activé : $CAPACITOR_SERVER_URL"
+          else
+            npm run build
+            if [ ! -s dist/index.html ]; then
+              echo "::error::Le build n'a pas produit dist/index.html. TanStack Start/Nitro est SSR : configurez la variable de dépôt CAPACITOR_SERVER_URL avec l'URL HTTPS réelle de l'application déployée, ou configurez un export SPA statique."
+              echo "Contenu de dist (diagnostic) :"
+              find dist -maxdepth 3 -type f -print 2>/dev/null || true
+              exit 1
+            fi
+            echo "Mode statique : dist/index.html trouvé."
           fi
 
       - name: Synchroniser le projet Android
+        env:
+          CAPACITOR_SERVER_URL: ${{ vars.CAPACITOR_SERVER_URL }}
         run: npx cap sync android
 
       - name: Compiler l'APK
@@ -47,3 +81,4 @@ jobs:
         with:
           name: salesgenius-apk
           path: android/app/build/outputs/apk/**/*.apk
+          if-no-files-found: error

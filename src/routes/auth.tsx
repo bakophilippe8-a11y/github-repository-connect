@@ -127,6 +127,26 @@ function AuthPage() {
           {t("continueGoogle")}
         </Button>
 
+        {mode === "in" && (
+          <button
+            type="button"
+            onClick={async () => {
+              if (!email) {
+                toast.error("Entrez d'abord votre adresse e-mail.");
+                return;
+              }
+              const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                redirectTo: `${window.location.origin}/reset-password`,
+              });
+              if (error) toast.error(error.message);
+              else toast.success("E-mail envoyé : ouvrez le lien pour choisir un mot de passe.");
+            }}
+            className="mt-4 w-full text-center text-sm text-muted-foreground transition-colors hover:text-foreground"
+          >
+            Mot de passe oublié / pas encore de mot de passe ?
+          </button>
+        )}
+
         <button
           onClick={() => setMode(mode === "in" ? "up" : "in")}
           className="mt-5 w-full text-center text-sm text-muted-foreground transition-colors hover:text-foreground"

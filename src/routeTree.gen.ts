@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as CatalogueRouteImport } from './routes/catalogue'
 import { Route as LeadsRouteImport } from './routes/leads'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as StatistiquesRouteImport } from './routes/statistiques'
 import { Route as AuthenticatedConversationsRouteImport } from './routes/_authenticated/conversations'
 import { Route as AuthenticatedParametresRouteImport } from './routes/_authenticated/parametres'
@@ -42,6 +43,11 @@ const CatalogueRoute = CatalogueRouteImport.update({
 const LeadsRoute = LeadsRouteImport.update({
   id: '/leads',
   path: '/leads',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const StatistiquesRoute = StatistiquesRouteImport.update({
@@ -77,6 +83,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/catalogue': typeof CatalogueRoute
   '/leads': typeof LeadsRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/statistiques': typeof StatistiquesRoute
   '/conversations': typeof AuthenticatedConversationsRoute
   '/parametres': typeof AuthenticatedParametresRoute
@@ -88,6 +95,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/catalogue': typeof CatalogueRoute
   '/leads': typeof LeadsRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/statistiques': typeof StatistiquesRoute
   '/conversations': typeof AuthenticatedConversationsRoute
   '/parametres': typeof AuthenticatedParametresRoute
@@ -101,6 +109,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/catalogue': typeof CatalogueRoute
   '/leads': typeof LeadsRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/statistiques': typeof StatistiquesRoute
   '/_authenticated/conversations': typeof AuthenticatedConversationsRoute
   '/_authenticated/parametres': typeof AuthenticatedParametresRoute
@@ -114,6 +123,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/catalogue'
     | '/leads'
+    | '/reset-password'
     | '/statistiques'
     | '/conversations'
     | '/parametres'
@@ -125,6 +135,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/catalogue'
     | '/leads'
+    | '/reset-password'
     | '/statistiques'
     | '/conversations'
     | '/parametres'
@@ -137,6 +148,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/catalogue'
     | '/leads'
+    | '/reset-password'
     | '/statistiques'
     | '/_authenticated/conversations'
     | '/_authenticated/parametres'
@@ -150,6 +162,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   CatalogueRoute: typeof CatalogueRoute
   LeadsRoute: typeof LeadsRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
   StatistiquesRoute: typeof StatistiquesRoute
   ApiSalesDecisionRoute: typeof ApiSalesDecisionRoute
 }
@@ -189,6 +202,13 @@ declare module '@tanstack/react-router' {
       path: '/leads'
       fullPath: '/leads'
       preLoaderRoute: typeof LeadsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/statistiques': {
@@ -250,6 +270,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   CatalogueRoute: CatalogueRoute,
   LeadsRoute: LeadsRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
   StatistiquesRoute: StatistiquesRoute,
   ApiSalesDecisionRoute: ApiSalesDecisionRoute,
 }
